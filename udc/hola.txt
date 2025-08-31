@@ -1,0 +1,11 @@
+django-admin startproject proyecto_udc
+
+cd proyecto_udc
+python manage.py startapp contador
+
+en settings.py
+INSTALLED_APPS = [
+    ...,
+    'rest_framework',   
+    'contador',
+]
