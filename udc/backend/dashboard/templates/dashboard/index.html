@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+    h1, h2 { margin-bottom: 10px; }
+    .container { display: flex; gap: 20px; flex-wrap: wrap; }
+    .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1 1 45%; min-width: 300px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #f0f0f0; }
+    tbody tr:hover { background: #f9f9f9; }
+
+  </style>
+</head>
+<body>
+
+<h1>Dashboard</h1>
+<div class="container">
+
+  <!-- Eventos -->
+  <div class="card">
+    <h2>Eventos</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>MAC</th>
+          <th>Sala</th>
+          <th>RSSI</th>
+          <th>Distancia (m)</th>
+          <th>Action</th>
+          <th>Hora</th>
+        </tr>
+      </thead>
+      <tbody id="eventos-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Sesiones activas -->
+  <div class="card">
+    <h2>Sesiones activas</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>MAC</th>
+          <th>Sala</th>
+          <th>Entrada</th>
+        </tr>
+      </thead>
+      <tbody id="sesiones-body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const API_EVENTOS = "/api/eventos/";
+  const API_SESIONES = "/api/sesiones/";
+  const txPower = -61; // calibración a 1 metro
+
+  let lastEventosIds = new Set();
+  let lastSesionIds = new Set();
+
+  function calcularDistancia(rssi) {
+    const n = 2;
+    return Math.pow(10, (txPower - rssi) / (10 * n)).toFixed(2);
+  }
+
+  function updateEventos(eventos) {
+    const tbody = document.getElementById("eventos-body");
+
+    eventos.forEach(ev => {
+      if (!lastEventosIds.has(ev.id)) {
+        const distancia = calcularDistancia(ev.rssi);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${ev.baliza_mac}</td>
+          <td>${ev.nombre_sala}</td>
+          <td>${ev.rssi}</td>
+          <td>${distancia}</td>
+          <td class="${ev.action.toLowerCase()}">${ev.action}</td>
+          <td>${new Date(ev.fecha).toLocaleTimeString()}</td>
+        `;
+        tbody.prepend(row);
+        lastEventosIds.add(ev.id);
+
+        // Mantener solo los últimos 10
+        while (tbody.rows.length > 10) {
+          tbody.deleteRow(-1);
+        }
+      }
+    });
+  }
+
+  function updateSesiones(sesiones) {
+    const tbody = document.getElementById("sesiones-body");
+    const idsActuales = new Set(sesiones.map(s => s.id));
+
+    // Solo actualizar si hay cambios
+    if (!areSetsEqual(idsActuales, lastSesionIds)) {
+      tbody.innerHTML = "";
+      sesiones.forEach(s => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${s.baliza}</td>
+          <td>${s.sala}</td>
+          <td>${new Date(s.fecha_entrada).toLocaleTimeString()}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      lastSesionIds = idsActuales;
+    }
+  }
+
+  function areSetsEqual(a, b) {
+    if (a.size !== b.size) return false;
+    for (let v of a) if (!b.has(v)) return false;
+    return true;
+  }
+
+  async function fetchData() {
+    try {
+      const resEventos = await fetch(API_EVENTOS);
+      const eventos = await resEventos.json();
+      updateEventos(eventos);
+
+      const resSesiones = await fetch(API_SESIONES);
+      const sesiones = await resSesiones.json();
+      updateSesiones(sesiones);
+    } catch (err) {
+      console.error("Error cargando datos:", err);
+    }
+  }
+
+  // Refresco cada 2 segundos
+  fetchData();
+  setInterval(fetchData, 2000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,19 @@
+
+
+Petición POST /api/eventos/
+
+{
+    "mac": "f0:a8:a2:a8:e8:fc",
+    "sala": "SALA_ESP32_01",
+    "rssi": -50,
+    "action": "IN"
+}
+
+{
+    "mac": "f0:a8:a2:a8:e8:fc",
+    "sala": "SALA_ESP32_01",
+    "rssi": -100,
+    "action": "OUT"
+}
+
+
